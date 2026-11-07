@@ -69,7 +69,8 @@ for (const el of [catEl, ...document.querySelectorAll("#fmin, #fmax, #q")]) el.a
 document.getElementById("source").textContent = "ULS " + META.source.replace("File Creation Date: ", "weekly dump of ");
 
 const regionEl = document.getElementById("region");
-regionEl.innerHTML = META.regions.map(r => `<option value="${r.code}">${esc(r.name)}</option>`).join("");
+// The hidden option labels the opening view, so choosing California from the list still counts as a change.
+regionEl.innerHTML = `<option value="" hidden>California (SF Bay Area)</option>` + META.regions.map(r => `<option value="${r.code}">${esc(r.name)}</option>`).join("");
 regionEl.addEventListener("change", () => { location.hash = regionEl.value; });
 window.addEventListener("hashchange", load);
 
@@ -85,7 +86,7 @@ let sites = [], loading = 0;
 async function load() {
   const hash = location.hash.slice(1);
   const region = META.regions.some(r => r.code === hash) ? hash : DEFAULT_REGION;
-  regionEl.value = region;
+  regionEl.value = hash ? region : "";
   const ticket = ++loading;
   const response = await fetch(`data/${region}.json`);
   if (ticket !== loading) return;  // the user picked another region while this one downloaded
