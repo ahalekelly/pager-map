@@ -11,4 +11,6 @@ cd uls && for f in l_paging l_LMcomm l_micro; do curl -sSfO https://data.fcc.gov
 uv run build.py uls
 ```
 
+`corrections.csv` fixes FCC filings with mistyped coordinates, and the build stops if a correction no longer matches a filing. To find new ones, download the Census [state boundary file](https://www2.census.gov/geo/tiger/GENZ2024/shp/cb_2024_us_state_500k.zip) and run `uv run check_coords.py cb_2024_us_state_500k.shp` after building; it lists sites outside their filed state.
+
 The page loads `data/<state>.json` with `fetch`, so open it through a web server rather than from disk. The Terrain layer only loads on ahalekelly.github.io; use Streets elsewhere.

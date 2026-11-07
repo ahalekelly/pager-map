@@ -1,0 +1,17 @@
+call,filed_lat,filed_lon,state,lat,lon,reason
+KNKK954,25.79122,80.18783,FL,25.79122,-80.18783,Longitude filed as east; the filed address is in Miami
+WPRF728,41.82672,-84.18411,IL,41.82672,-87.68411,Longitude degrees typo (84 for 87); S Campbell Ave in Chicago is at 87.684 W
+KNKO952,32.40186,-80.73869,SC,32.40186,-80.73869,Filed under NC; Burton is in South Carolina
+WQZ654,27.98167,-84.55583,FL,27.98167,-80.55583,Longitude degrees typo (84 for 80); Jordan Blvd in Malabar is at 80.558 W
+KNKG523,32.07922,-115.04133,CA,32.67919,-115.34136,Digits dropped from minutes; the same license files this site correctly as another location
+KNKL416,39.53008,-76.93025,MD,39.53008,-76.93025,Filed under VA; Westminster is in Maryland
+WPKU216,32.04603,-80.11981,SC,32.97638,-80.07296,Filed coordinates are offshore; geocoded the filed address (9330 Medical Plaza Dr)
+WPUS367,32.95306,-93.64167,TX,32.95306,-96.64167,Longitude degrees typo (93 for 96); the George Bush Turnpike in Garland is at 96.6 W
+WQZD511,25.42317,-81.63008,FL,26.42317,-81.63008,Latitude degrees typo (25 for 26); Carter Rd near Estero is at 26.436 N
+WPDJ480,33.60558,-118.81175,CA,33.60558,-117.81175,Longitude degrees typo (118 for 117); Signal Peak is at 117.811 W
+KNKL636,38.49344,-77.49858,MD,39.49344,-77.49858,Latitude degrees typo (38 for 39); Catoctin Mountain is at 39.5 N
+WPHU793,40.68178,-74.30292,NY,40.68178,-74.00292,Longitude minutes typo (18' for 0'); the tunnel's Brooklyn portal is at 74.000 W
+KNKP608,41.35897,-71.05697,MA,42.35897,-71.05697,Latitude degrees typo (41 for 42); 53 State St in Boston is at 42.358 N
+WPHQ351,40.53289,-74.10097,NJ,40.98289,-74.10097,Latitude minutes typo (31' for 58'); 223 N Van Dien Ave in Ridgewood is at 40.984 N
+WNTW584,13.5495,144.71242,GU,13.43283,144.71242,Latitude minutes typo (32' for 25'); Mount Alutom is at 13.433 N
+WPOR490,20.53347,-156.31744,HI,20.8668,-156.31744,Latitude minutes typo (32' for 52'); Haliimaile is at 20.873 N

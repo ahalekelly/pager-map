@@ -2,7 +2,7 @@
 # requires-python = ">=3.12"
 # ///
 """Build index.html and data/<region>.json: maps of active FCC ULS site-licensed transmitters in 900-932 MHz, per US state plus the SF Bay Area."""
-import collections, json, pathlib, sys
+import collections, csv, json, pathlib, sys
 
 ULS = pathlib.Path(sys.argv[1])
 HERE = pathlib.Path(__file__).parent
@@ -28,6 +28,10 @@ REGIONS = {
     "PR": "Puerto Rico", "GU": "Guam", "VI": "U.S. Virgin Islands", "AS": "American Samoa", "MP": "Northern Mariana Islands",
     "GM": "Gulf of Mexico (offshore)",
 }
+
+
+# Hand-checked fixes for mistyped FCC coordinates, keyed by call sign and filed position (find candidates with check_coords.py).
+CORRECTIONS = {(c["call"], float(c["filed_lat"]), float(c["filed_lon"])): c for c in csv.DictReader(open(HERE / "corrections.csv"))}
 
 
 def rows(d, table):
@@ -81,16 +85,26 @@ for d in DIRS:
             lat = int(r[19]) + int(r[20] or 0) / 60 + float(r[21] or 0) / 3600
             lon = int(r[23]) + int(r[24] or 0) / 60 + float(r[25] or 0) / 3600
             lat, lon = (lat if r[22] == "N" else -lat), (-lon if r[26] == "W" else lon)
-            sites[(r[1], r[8])] = {"state": r[14], "lat": round(lat, 5), "lon": round(lon, 5), "addr": ", ".join(x for x in (r[11], r[12]) if x), "ground": num(r[18])}
+            site = {"state": r[14], "lat": round(lat, 5), "lon": round(lon, 5), "addr": ", ".join(x for x in (r[11], r[12]) if x), "ground": num(r[18]), "notes": []}
+            fix = CORRECTIONS.get((r[4], site["lat"], site["lon"]))
+            if fix:
+                fix["used"] = True
+                site.update(state=fix["state"], lat=float(fix["lat"]), lon=float(fix["lon"]), notes=[f"{r[4]} coordinates corrected from FCC filing ({site['lat']}, {site['lon']}): {fix['reason']}"])
+            sites[(r[1], r[8])] = site
     for r in rows(d, "AN"):
         if (r[1], r[7]) in sites:
             antennas[(r[1], r[7], r[6])] = {"height": num(r[10] or r[11]), "haat": num(r[19])}  # tip height, else center height
+
+stale = [key for key, fix in CORRECTIONS.items() if "used" not in fix]
+if stale:
+    raise ValueError(f"corrections.csv rows no longer match an FCC filing; remove or update them: {stale}")
 
 points = {}
 for (usi, loc), site in sites.items():
     if "licensee" not in licenses[usi]:
         raise ValueError(f"license {licenses[usi]['call']} has no licensee entity")
-    p = points.setdefault((site["lat"], site["lon"]), {**site, "addr": [], "tx": []})
+    p = points.setdefault((site["lat"], site["lon"]), {**site, "addr": [], "notes": [], "tx": []})
+    p["notes"] += site["notes"]
     if site["addr"] and site["addr"] not in p["addr"]:
         p["addr"].append(site["addr"])
     for f in freqs[(usi, loc)].values():

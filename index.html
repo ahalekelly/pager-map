@@ -98,10 +98,7 @@ async function load() {
   const counts = META.categories.map(() => 0);
   for (const s of sites) for (const t of s.tx) counts[t.cat]++;
   catEl.querySelectorAll(".n").forEach((el, i) => el.textContent = counts[i]);
-  // Fit to the middle 98% of sites: a few FCC filings have mistyped coordinates far outside their state.
-  const pct = (values, p) => values.sort((a, b) => a - b)[Math.round(p * (values.length - 1))];
-  const lats = sites.map(s => s.lat), lons = sites.map(s => s.lon);
-  map.fitBounds([[pct(lats, 0.01), pct(lons, 0.01)], [pct(lats, 0.99), pct(lons, 0.99)]], { maxZoom: 11 });
+  map.fitBounds(sites.map(s => [s.lat, s.lon]), { maxZoom: 11 });
   draw();
 }
 
@@ -110,7 +107,8 @@ function popup(s, tx, others) {
   const rows = tx.map(t => `<tr><td><a target="_blank" href="https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=${esc(t.usi)}">${esc(t.call)}</a></td><td>${esc(t.service)}</td><td>${esc(t.licensee)}</td><td>${band(t)}</td><td>${t.w == null ? "?" : fmt(t.w) + (t.basis === "eirp" ? "*" : "")}</td><td>${esc(t.cls)}</td><td>${fmt(t.height)}</td><td>${fmt(t.haat)}</td><td>${esc(t.expires)}</td></tr>`).join("");
   return `<b>${esc(s.addr || "(no address)")}</b><br><span class="muted">${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}${s.ground != null ? `, ground ${fmt(s.ground)} m` : ""}</span>
     <table><tr><th>Call</th><th>Svc</th><th>Licensee</th><th>MHz</th><th>ERP W</th><th>Class</th><th>AGL</th><th>HAAT</th><th>Expires</th></tr>${rows}</table>
-    ${others.length ? `<span class="muted">Other frequencies here: ${others.map(f => f.toFixed(4)).join(", ")}</span>` : ""}`;
+    ${others.length ? `<span class="muted">Other frequencies here: ${others.map(f => f.toFixed(4)).join(", ")}</span>` : ""}
+    ${s.notes.map(n => `<br><span class="muted">${esc(n)}</span>`).join("")}`;
 }
 
 function draw() {
