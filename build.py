@@ -25,7 +25,6 @@ REGIONS = {
     "RI": "Rhode Island", "SC": "South Carolina", "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah",
     "VT": "Vermont", "VA": "Virginia", "WA": "Washington", "WV": "West Virginia", "WI": "Wisconsin", "WY": "Wyoming",
     "PR": "Puerto Rico", "GU": "Guam", "VI": "U.S. Virgin Islands", "AS": "American Samoa", "MP": "Northern Mariana Islands",
-    "GM": "Gulf of Mexico (offshore)",
 }
 
 
@@ -78,7 +77,7 @@ for d in DIRS:
                 if same is None or (watts or 0) > (same["w"] or 0):
                     freqs[(r[1], r[6])][lo] = f
     for r in rows(d, "LO"):
-        if (r[1], r[8]) in freqs and r[6] == "F" and r[19]:  # fixed transmit sites only; other location types are area centers
+        if (r[1], r[8]) in freqs and r[6] == "F" and r[19] and r[14] != "GM":  # fixed transmit sites only (other location types are area centers), skipping Gulf of Mexico platforms
             if r[14] not in REGIONS:
                 raise ValueError(f"unknown state {r[14]!r} for license {licenses[r[1]]['call']}; add it to REGIONS")
             lat = int(r[19]) + int(r[20] or 0) / 60 + float(r[21] or 0) / 3600

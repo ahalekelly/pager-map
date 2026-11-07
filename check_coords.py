@@ -17,8 +17,6 @@ TOLERANCE_KM = 5  # coastal towers and the generalized boundary file can disagre
 states = {rec.record["STUSPS"]: shape(rec.shape.__geo_interface__) for rec in shapefile.Reader(sys.argv[1]).shapeRecords()}
 for path in sorted((pathlib.Path(__file__).parent / "data").glob("*.json")):
     code = path.stem
-    if code == "GM":  # Gulf of Mexico sites are offshore by definition
-        continue
     for site in json.loads(path.read_text()):
         point = Point(site["lon"], site["lat"])
         off_km = states[code].distance(point) * KM_PER_DEGREE
