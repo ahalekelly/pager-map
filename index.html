@@ -69,7 +69,7 @@ document.getElementById("source").textContent = "ULS " + DATA.source.replace("Fi
 
 const map = L.map("map");
 // The Tracestrack key only serves pages on ahalekelly.github.io (set in the Tracestrack console), so local copies show Streets only.
-const terrain = L.tileLayer("https://tile.tracestrack.com/topo__/{z}/{x}/{y}.png?key=8c7bd473d242f68358f6aaa10a6894919274a8a33a999a44", {
+const terrain = L.tileLayer("https://tile.tracestrack.com/topo__/{z}/{x}/{y}.webp?key=8c7bd473d242f68358f6aaa10a6894919274a8a33a999a44", {
   maxZoom: 19, attribution: "Data: &copy; OpenStreetMap contributors, SRTM, GEBCO, SONNY's LiDAR DTM, NASADEM, ESA WorldCover; Maps &copy; <a href=\"https://www.tracestrack.com/\">Tracestrack</a>" }).addTo(map);
 const streets = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; OpenStreetMap contributors" });
 L.control.layers({ Terrain: terrain, Streets: streets }).addTo(map);
