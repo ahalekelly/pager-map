@@ -70,7 +70,7 @@ document.getElementById("source").textContent = "ULS " + META.source.replace("Fi
 
 const regionEl = document.getElementById("region");
 // The hidden option labels the opening view, so choosing California from the list still counts as a change.
-regionEl.innerHTML = `<option value="" hidden>California (SF Bay Area)</option>` + META.regions.map(r => `<option value="${r.code}">${esc(r.name)}</option>`).join("");
+regionEl.innerHTML = `<option value="" hidden>California</option>` + META.regions.map(r => `<option value="${r.code}">${esc(r.name)}</option>`).join("");
 regionEl.addEventListener("change", () => { location.hash = regionEl.value; });
 window.addEventListener("hashchange", load);
 
