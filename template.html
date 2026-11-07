@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bay Area transmitters near the 902–928 MHz ISM band</title>
+<title>Transmitters near the 902–928 MHz ISM band</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
@@ -32,8 +32,10 @@
 </head>
 <body>
 <div id="side">
-  <h1>Bay Area transmitters near the 902–928 MHz ISM band</h1>
+  <h1>Transmitters near the 902–928 MHz ISM band</h1>
   <div class="muted">Active FCC ULS site licenses. <span id="count"></span><br><span id="source"></span></div>
+  <h2>Region</h2>
+  <select id="region"></select>
   <h2>Frequency (MHz)</h2>
   <input id="fmin" type="number" step="0.0125" value="900"> to <input id="fmax" type="number" step="0.0125" value="932">
   <h2>Licensee or call sign</h2>
@@ -47,11 +49,11 @@
 </div>
 <div id="map"></div>
 <script>
-const DATA = /*DATA*/;
+const META = /*META*/;
 const esc = (v) => String(v).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-// Scale so the most powerful transmitter in the whole dataset gets MAX_RADIUS, keeping area comparable while filtering.
+// Scale so the most powerful transmitter nationwide gets MAX_RADIUS, keeping area comparable across regions and filters.
 const MAX_RADIUS = 25, MIN_RADIUS = 2;
-const PEAK = Math.max(...DATA.sites.flatMap(s => s.tx.map(t => t.w || 0)));
+const PEAK = META.peak;
 const radius = (w) => Math.max(MIN_RADIUS, MAX_RADIUS * Math.sqrt(w / PEAK));
 const fmt = (v) => v == null ? "" : v < 10 ? +v.toPrecision(2) : Math.round(v);
 const watts = (w) => w >= 1000 ? +(w / 1000).toPrecision(3) + " kW" : fmt(w) + " W";
@@ -59,22 +61,49 @@ const decade = 10 ** Math.floor(Math.log10(PEAK));
 document.getElementById("sizes").innerHTML = [decade / 1000, decade / 100, decade / 10, decade].map(w =>
   `<div><span style="width:${2 * radius(w)}px;height:${2 * radius(w)}px"></span>${watts(w)}</div>`).join("");
 
-const nByCat = DATA.categories.map(() => 0);
-for (const s of DATA.sites) for (const t of s.tx) nByCat[t.cat]++;
 const catEl = document.getElementById("cats");
-catEl.innerHTML = DATA.categories.map((c, i) =>
-  `<label><input type="checkbox" checked value="${i}"><span class="sw" style="background:${c.color}"></span><span>${esc(c.label)}</span><span class="n">${nByCat[i]}</span></label>`).join("");
+catEl.innerHTML = META.categories.map((c, i) =>
+  `<label><input type="checkbox" checked value="${i}"><span class="sw" style="background:${c.color}"></span><span>${esc(c.label)}</span><span class="n"></span></label>`).join("");
 for (const el of [catEl, ...document.querySelectorAll("#fmin, #fmax, #q")]) el.addEventListener("input", draw);
-document.getElementById("source").textContent = "ULS " + DATA.source.replace("File Creation Date: ", "weekly dump of ");
+document.getElementById("source").textContent = "ULS " + META.source.replace("File Creation Date: ", "weekly dump of ");
 
-const map = L.map("map");
+const regionEl = document.getElementById("region");
+regionEl.innerHTML = META.regions.map(r => `<option value="${r.code}">${esc(r.name)}</option>`).join("");
+regionEl.addEventListener("change", () => { location.hash = regionEl.value; });
+window.addEventListener("hashchange", load);
+
+const map = L.map("map", { preferCanvas: true });
 // The Tracestrack key only serves pages on ahalekelly.github.io (set in the Tracestrack console), so local copies show Streets only.
 const terrain = L.tileLayer("https://tile.tracestrack.com/topo__/{z}/{x}/{y}.webp?key=8c7bd473d242f68358f6aaa10a6894919274a8a33a999a44", {
   maxZoom: 19, attribution: "Data: &copy; OpenStreetMap contributors, SRTM, GEBCO, SONNY's LiDAR DTM, NASADEM, ESA WorldCover; Maps &copy; <a href=\"https://www.tracestrack.com/\">Tracestrack</a>" }).addTo(map);
 const streets = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; OpenStreetMap contributors" });
 L.control.layers({ Terrain: terrain, Streets: streets }).addTo(map);
-map.fitBounds(DATA.sites.map(s => [s.lat, s.lon]));
 const layer = L.layerGroup().addTo(map);
+let sites = [], loading = 0;
+
+async function load() {
+  const region = META.regions.some(r => r.code === location.hash.slice(1)) ? location.hash.slice(1) : META.regions[0].code;
+  regionEl.value = region;
+  const ticket = ++loading;
+  const response = await fetch(`data/${region}.json`);
+  if (ticket !== loading) return;  // the user picked another region while this one downloaded
+  if (!response.ok) {
+    layer.clearLayers();
+    document.getElementById("count").textContent = `Could not load data/${region}.json (HTTP ${response.status}).`;
+    throw new Error(`data/${region}.json: HTTP ${response.status}`);
+  }
+  const data = await response.json();
+  if (ticket !== loading) return;
+  sites = data;
+  const counts = META.categories.map(() => 0);
+  for (const s of sites) for (const t of s.tx) counts[t.cat]++;
+  catEl.querySelectorAll(".n").forEach((el, i) => el.textContent = counts[i]);
+  // Fit to the middle 98% of sites: a few FCC filings have mistyped coordinates far outside their state.
+  const pct = (values, p) => values.sort((a, b) => a - b)[Math.round(p * (values.length - 1))];
+  const lats = sites.map(s => s.lat), lons = sites.map(s => s.lon);
+  map.fitBounds([[pct(lats, 0.01), pct(lons, 0.01)], [pct(lats, 0.99), pct(lons, 0.99)]], { maxZoom: 11 });
+  draw();
+}
 
 const band = (t) => t.mhz.toFixed(4) + (t.hi ? "–" + t.hi.toFixed(4) : "");
 function popup(s, tx, others) {
@@ -88,28 +117,28 @@ function draw() {
   const cats = new Set([...catEl.querySelectorAll("input:checked")].map(b => +b.value));
   const fmin = +document.getElementById("fmin").value, fmax = +document.getElementById("fmax").value;
   const q = document.getElementById("q").value.trim().toLowerCase();
-  const shown = [], sites = new Set();
-  for (const s of DATA.sites) {
+  const shown = [], shownSites = new Set();
+  for (const s of sites) {
     const byFreq = new Map();
     for (const t of s.tx) if (cats.has(t.cat) && t.mhz <= fmax && (t.hi || t.mhz) >= fmin
       && (!q || t.licensee.toLowerCase().includes(q) || t.call.toLowerCase().includes(q))) byFreq.set(t.mhz, [...(byFreq.get(t.mhz) || []), t]);
     for (const [mhz, tx] of byFreq) {
       const top = tx.reduce((a, b) => (b.w || 0) > (a.w || 0) ? b : a);
       shown.push({ s, tx, top, others: [...byFreq.keys()].filter(f => f !== mhz).sort((a, b) => a - b) });
-      sites.add(s);
+      shownSites.add(s);
     }
   }
   layer.clearLayers();
   shown.sort((a, b) => (b.top.w || 0) - (a.top.w || 0));  // draw big circles first so stacked small ones stay clickable
   for (const { s, tx, top, others } of shown) {
-    L.circleMarker([s.lat, s.lon], { radius: radius(top.w || 0), color: "#000", weight: 1, fillColor: DATA.categories[top.cat].color, fillOpacity: 0.45 })
+    L.circleMarker([s.lat, s.lon], { radius: radius(top.w || 0), color: "#000", weight: 1, fillColor: META.categories[top.cat].color, fillOpacity: 0.45 })
       .bindTooltip(`${esc(s.addr || "(no address)")} — ${band(top)} MHz, ${top.w == null ? "? W" : watts(top.w)}`)
       .bindPopup(popup(s, tx, others), { maxWidth: 700 })
       .addTo(layer);
   }
-  document.getElementById("count").textContent = `Showing ${shown.length} transmitters at ${sites.size} sites.`;
+  document.getElementById("count").textContent = `Showing ${shown.length} transmitters at ${shownSites.size} sites.`;
 }
-draw();
+load();
 </script>
 </body>
 </html>
