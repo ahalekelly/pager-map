@@ -1,14 +1,13 @@
 # /// script
 # requires-python = ">=3.12"
 # ///
-"""Build index.html and data/<region>.json: maps of active FCC ULS site-licensed transmitters in 900-932 MHz, per US state plus the SF Bay Area."""
+"""Build index.html and data/<state>.json: maps of active FCC ULS site-licensed transmitters in 900-932 MHz, per US state."""
 import collections, csv, json, pathlib, sys
 
 ULS = pathlib.Path(sys.argv[1])
 HERE = pathlib.Path(__file__).parent
 DIRS = ["l_paging", "l_LMcomm", "l_micro"]  # hold every service in CATEGORIES
 LO_MHZ, HI_MHZ = 900, 932
-BAY_AREA = (36.95, 38.45, -123.2, -121.55)  # S, N, W, E: Santa Cruz to Santa Rosa, coast to Livermore
 CATEGORIES = [  # (label, color, matches(service, mhz)), in band order; the map shows only matching transmitters
     ("Tag readers (LMS), 902–904 and 909.75–921.75 MHz", "#3cb44b", lambda svc, mhz: svc == "LN"),
     ("SCADA radio remotes (Part 101), 928–929 MHz", "#f58231", lambda svc, mhz: svc in ("MG", "MW")),
@@ -115,16 +114,14 @@ by_region = collections.defaultdict(list)
 for p in points.values():
     p["addr"] = " / ".join(p["addr"])
     by_region[p.pop("state")].append(p)
-    if BAY_AREA[0] < p["lat"] < BAY_AREA[1] and BAY_AREA[2] < p["lon"] < BAY_AREA[3]:
-        by_region["bay"].append(p)
 out = HERE / "data"
 out.mkdir(exist_ok=True)
-for code in ["bay", *REGIONS]:  # write empty regions too, so no file outlives its data
+for code in REGIONS:  # write empty regions too, so no file outlives its data
     (out / f"{code}.json").write_text(json.dumps(sorted(by_region[code], key=lambda p: (p["lat"], p["lon"])), separators=(",", ":")))
 
 meta = {
     "categories": [{"label": label, "color": color} for label, color, _ in CATEGORIES],
-    "regions": [{"code": "bay", "name": "SF Bay Area"}] + sorted(({"code": code, "name": name} for code, name in REGIONS.items() if by_region[code]), key=lambda r: r["name"]),
+    "regions": sorted(({"code": code, "name": name} for code, name in REGIONS.items() if by_region[code]), key=lambda r: r["name"]),
     "peak": max(t["w"] or 0 for p in points.values() for t in p["tx"]),
     "source": (ULS / "l_paging" / "counts").read_text().splitlines()[0],
 }
