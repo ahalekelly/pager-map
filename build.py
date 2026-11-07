@@ -2,14 +2,13 @@
 # requires-python = ">=3.12"
 # ///
 """Build index.html: a map of active FCC ULS site-licensed transmitters in 900-932 MHz around the SF Bay Area."""
-import collections, json, math, pathlib, sys
+import collections, json, pathlib, sys
 
 ULS = pathlib.Path(sys.argv[1])
 HERE = pathlib.Path(__file__).parent
 DIRS = ["l_paging", "l_LMcomm", "l_micro"]  # hold every service in CATEGORIES
 LO_MHZ, HI_MHZ = 900, 932
 S, N, W, E = 36.95, 38.45, -123.2, -121.55  # Santa Cruz to Santa Rosa, coast to Livermore
-SAME_SITE_M = 100  # licenses often file one tower with coordinates a few meters apart
 CATEGORIES = [  # (label, color, matches(service, mhz)), in band order; the map shows only matching transmitters
     ("Tag readers (LMS), 902–904 and 909.75–921.75 MHz", "#3cb44b", lambda svc, mhz: svc == "LN"),
     ("SCADA radio remotes (Part 101), 928–929 MHz", "#f58231", lambda svc, mhz: svc in ("MG", "MW")),
@@ -45,12 +44,6 @@ def category(svc, mhz):
     return matches[0] if matches else None
 
 
-def distance_m(a, b):
-    dy = (a["lat"] - b["lat"]) * 111_320
-    dx = (a["lon"] - b["lon"]) * 111_320 * math.cos(math.radians(a["lat"]))
-    return math.hypot(dx, dy)
-
-
 licenses, freqs, sites, antennas = {}, collections.defaultdict(dict), {}, {}
 for d in DIRS:
     for r in rows(d, "HD"):
@@ -80,23 +73,20 @@ for d in DIRS:
         if (r[1], r[7]) in sites:
             antennas[(r[1], r[7], r[6])] = {"height": num(r[10] or r[11]), "haat": num(r[19])}  # tip height, else center height
 
-points = []
+points = {}
 for (usi, loc), site in sites.items():
     if "licensee" not in licenses[usi]:
         raise ValueError(f"license {licenses[usi]['call']} has no licensee entity")
-    p = next((p for p in points if distance_m(p, site) < SAME_SITE_M), None)
-    if p is None:
-        p = {**site, "addr": [], "tx": []}
-        points.append(p)
+    p = points.setdefault((site["lat"], site["lon"]), {**site, "addr": [], "tx": []})
     if site["addr"] and site["addr"] not in p["addr"]:
         p["addr"].append(site["addr"])
     for f in freqs[(usi, loc)].values():
         ant = antennas.get((usi, loc, f["ant"]), {})
         p["tx"].append({**licenses[usi], **{k: f[k] for k in ("mhz", "hi", "cls", "w", "basis", "cat")}, "height": ant.get("height"), "haat": ant.get("haat")})
-for p in points:
+for p in points.values():
     p["addr"] = " / ".join(p["addr"])
 
-data = {"categories": [{"label": label, "color": color} for label, color, _ in CATEGORIES], "sites": sorted(points, key=lambda p: (p["lat"], p["lon"])), "source": (ULS / "l_paging" / "counts").read_text().splitlines()[0]}
+data = {"categories": [{"label": label, "color": color} for label, color, _ in CATEGORIES], "sites": sorted(points.values(), key=lambda p: (p["lat"], p["lon"])), "source": (ULS / "l_paging" / "counts").read_text().splitlines()[0]}
 (HERE / "index.html").write_text((HERE / "template.html").read_text().replace("/*DATA*/", json.dumps(data, separators=(",", ":")).replace("</", "<\\/")))
 print(f"{len(data['sites'])} sites, {sum(len(p['tx']) for p in data['sites'])} transmitters")
 print(collections.Counter(CATEGORIES[t["cat"]][0] for p in data["sites"] for t in p["tx"]).most_common())

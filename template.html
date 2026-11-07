@@ -40,25 +40,18 @@
   <input id="q" type="search" placeholder="e.g. American Messaging, KMB305">
   <h2>Category</h2>
   <div id="cats"></div>
-  <h2>Marker area ∝ total licensed ERP at the site</h2>
+  <h2>Marker area ∝ licensed ERP</h2>
   <div id="sizes"></div>
-  <p class="muted">Total counts each frequency once at its highest licensed ERP, as if every channel transmits at once. ERP in watts; * means converted from filed EIRP, ? means no power on file. Heights in meters: antenna above ground (tip, or center if no tip is filed), and above average terrain (HAAT).</p>
+  <p class="muted">Each marker is one frequency at one site, at its highest licensed ERP; a site with several frequencies shows stacked markers. ERP in watts; * means converted from filed EIRP, ? means no power on file. Heights in meters: antenna above ground (tip, or center if no tip is filed), and above average terrain (HAAT).</p>
   <p class="muted">Only fixed sites with coordinates appear. Licenses for an area rather than a site are missing, including narrowband PCS paging at 930–931 MHz, mobile radios, and some toll readers.</p>
 </div>
 <div id="map"></div>
 <script>
 const DATA = /*DATA*/;
-// The strongest transmitter on each frequency; total licensed power counts each frequency once.
-const perFreq = (tx) => {
-  const best = new Map();
-  for (const t of tx) if ((t.w || 0) >= (best.get(t.mhz)?.w || 0)) best.set(t.mhz, t);
-  return [...best.values()];
-};
-const totalW = (tx) => perFreq(tx).reduce((sum, t) => sum + (t.w || 0), 0);
 const esc = (v) => String(v).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-// Scale so the most powerful site in the whole dataset gets MAX_RADIUS, keeping area comparable while filtering.
-const MAX_RADIUS = 30, MIN_RADIUS = 2;
-const PEAK = Math.max(...DATA.sites.map(s => totalW(s.tx)));
+// Scale so the most powerful transmitter in the whole dataset gets MAX_RADIUS, keeping area comparable while filtering.
+const MAX_RADIUS = 25, MIN_RADIUS = 2;
+const PEAK = Math.max(...DATA.sites.flatMap(s => s.tx.map(t => t.w || 0)));
 const radius = (w) => Math.max(MIN_RADIUS, MAX_RADIUS * Math.sqrt(w / PEAK));
 const fmt = (v) => v == null ? "" : v < 10 ? +v.toPrecision(2) : Math.round(v);
 const watts = (w) => w >= 1000 ? +(w / 1000).toPrecision(3) + " kW" : fmt(w) + " W";
@@ -80,36 +73,37 @@ map.fitBounds(DATA.sites.map(s => [s.lat, s.lon]));
 const layer = L.layerGroup().addTo(map);
 
 const band = (t) => t.mhz.toFixed(4) + (t.hi ? "–" + t.hi.toFixed(4) : "");
-function popup(s, tx) {
+function popup(s, tx, others) {
   const rows = tx.map(t => `<tr><td><a target="_blank" href="https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=${esc(t.usi)}">${esc(t.call)}</a></td><td>${esc(t.service)}</td><td>${esc(t.licensee)}</td><td>${band(t)}</td><td>${t.w == null ? "?" : fmt(t.w) + (t.basis === "eirp" ? "*" : "")}</td><td>${esc(t.cls)}</td><td>${fmt(t.height)}</td><td>${fmt(t.haat)}</td><td>${esc(t.expires)}</td></tr>`).join("");
   return `<b>${esc(s.addr || "(no address)")}</b><br><span class="muted">${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}${s.ground != null ? `, ground ${fmt(s.ground)} m` : ""}</span>
-    <table><tr><th>Call</th><th>Svc</th><th>Licensee</th><th>MHz</th><th>ERP W</th><th>Class</th><th>AGL</th><th>HAAT</th><th>Expires</th></tr>${rows}</table>`;
+    <table><tr><th>Call</th><th>Svc</th><th>Licensee</th><th>MHz</th><th>ERP W</th><th>Class</th><th>AGL</th><th>HAAT</th><th>Expires</th></tr>${rows}</table>
+    ${others.length ? `<span class="muted">Other frequencies here: ${others.map(f => f.toFixed(4)).join(", ")}</span>` : ""}`;
 }
 
 function draw() {
   const cats = new Set([...catEl.querySelectorAll("input:checked")].map(b => +b.value));
   const fmin = +document.getElementById("fmin").value, fmax = +document.getElementById("fmax").value;
   const q = document.getElementById("q").value.trim().toLowerCase();
-  const shown = [];
-  let nTx = 0;
+  const shown = [], sites = new Set();
   for (const s of DATA.sites) {
-    const tx = s.tx.filter(t => cats.has(t.cat) && t.mhz <= fmax && (t.hi || t.mhz) >= fmin
-      && (!q || t.licensee.toLowerCase().includes(q) || t.call.toLowerCase().includes(q))).sort((a, b) => a.mhz - b.mhz);
-    if (!tx.length) continue;
-    const byCat = new Map();
-    for (const t of perFreq(tx)) byCat.set(t.cat, (byCat.get(t.cat) || 0) + (t.w || 0));
-    shown.push({ s, tx, w: totalW(tx), cat: [...byCat].sort((a, b) => b[1] - a[1])[0][0] });
-    nTx += tx.length;
+    const byFreq = new Map();
+    for (const t of s.tx) if (cats.has(t.cat) && t.mhz <= fmax && (t.hi || t.mhz) >= fmin
+      && (!q || t.licensee.toLowerCase().includes(q) || t.call.toLowerCase().includes(q))) byFreq.set(t.mhz, [...(byFreq.get(t.mhz) || []), t]);
+    for (const [mhz, tx] of byFreq) {
+      const top = tx.reduce((a, b) => (b.w || 0) > (a.w || 0) ? b : a);
+      shown.push({ s, tx, top, others: [...byFreq.keys()].filter(f => f !== mhz).sort((a, b) => a - b) });
+      sites.add(s);
+    }
   }
   layer.clearLayers();
-  shown.sort((a, b) => b.w - a.w);  // draw big circles first so small ones stay clickable
-  for (const { s, tx, w, cat } of shown) {
-    L.circleMarker([s.lat, s.lon], { radius: radius(w), color: "#000", weight: 1, fillColor: DATA.categories[cat].color, fillOpacity: 0.55 })
-      .bindTooltip(`${esc(s.addr || "(no address)")} — ${tx.length} tx, ${watts(w)} total licensed ERP`)
-      .bindPopup(popup(s, tx), { maxWidth: 700 })
+  shown.sort((a, b) => (b.top.w || 0) - (a.top.w || 0));  // draw big circles first so stacked small ones stay clickable
+  for (const { s, tx, top, others } of shown) {
+    L.circleMarker([s.lat, s.lon], { radius: radius(top.w || 0), color: "#000", weight: 1, fillColor: DATA.categories[top.cat].color, fillOpacity: 0.45 })
+      .bindTooltip(`${esc(s.addr || "(no address)")} — ${band(top)} MHz, ${top.w == null ? "? W" : watts(top.w)}`)
+      .bindPopup(popup(s, tx, others), { maxWidth: 700 })
       .addTo(layer);
   }
-  document.getElementById("count").textContent = `Showing ${shown.length} sites, ${nTx} transmitters.`;
+  document.getElementById("count").textContent = `Showing ${shown.length} transmitters at ${sites.size} sites.`;
 }
 draw();
 </script>
