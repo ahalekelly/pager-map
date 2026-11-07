@@ -3,7 +3,30 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Transmitters near the 902–928 MHz ISM band</title>
+<title>900 MHz interference map: pagers and tag readers near the 902–928 MHz ISM band (Meshtastic, MeshCore, Helium)</title>
+<meta name="description" content="Interactive map of FCC-licensed transmitters that can interfere with 902–928 MHz ISM radios: LoRa mesh networks like Meshtastic and MeshCore, LoRaWAN networks like Helium and The Things Network, Z-Wave, and Wi-Fi HaLow. Shows 929–932 MHz paging transmitters, toll and rail tag readers, and 928 MHz SCADA links in every US state.">
+<link rel="canonical" href="https://ahalekelly.github.io/pager-map/">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://ahalekelly.github.io/pager-map/">
+<meta property="og:title" content="900 MHz interference map: pagers and tag readers near the ISM band">
+<meta property="og:description" content="Interactive map of FCC-licensed transmitters that can interfere with 902–928 MHz ISM radios: LoRa mesh networks like Meshtastic and MeshCore, LoRaWAN networks like Helium and The Things Network, Z-Wave, and Wi-Fi HaLow. Shows 929–932 MHz paging transmitters, toll and rail tag readers, and 928 MHz SCADA links in every US state.">
+<meta property="og:image" content="https://ahalekelly.github.io/pager-map/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "Dataset",
+ "name": "FCC-licensed transmitters near the 902–928 MHz ISM band",
+ "description": "Interactive map of FCC-licensed transmitters that can interfere with 902–928 MHz ISM radios: LoRa mesh networks like Meshtastic and MeshCore, LoRaWAN networks like Helium and The Things Network, Z-Wave, and Wi-Fi HaLow. Shows 929–932 MHz paging transmitters, toll and rail tag readers, and 928 MHz SCADA links in every US state.",
+ "url": "https://ahalekelly.github.io/pager-map/",
+ "keywords": ["Meshtastic", "MeshCore", "Helium", "LoRa", "LoRaWAN", "915 MHz", "ISM band", "paging", "pager", "LMS", "FCC ULS", "RF interference"],
+ "isBasedOn": "https://www.fcc.gov/uls/transactions/daily-weekly",
+ "spatialCoverage": "United States",
+ "dateModified": "2026-11-01",
+ "creator": {"@type": "Person", "name": "Adrian Kelly", "url": "https://github.com/ahalekelly"},
+ "distribution": {"@type": "DataDownload", "encodingFormat": "application/json", "contentUrl": "https://ahalekelly.github.io/pager-map/data/CA.json"}}
+</script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
@@ -33,7 +56,7 @@
 <body>
 <div id="side">
   <h1>Transmitters near the 902–928 MHz ISM band</h1>
-  <div class="muted">Active FCC ULS site licenses. <span id="count"></span><br><span id="source"></span></div>
+  <p class="muted">Licensed transmitters that can interfere with Meshtastic, MeshCore, Helium and other LoRa, LoRaWAN, Z-Wave and Wi-Fi HaLow radios: pagers just above the band, and toll and rail tag readers inside it. From active FCC ULS site licenses. <span id="count"></span><br><span id="source"></span></p>
   <h2>Region</h2>
   <select id="region"></select>
   <h2>Frequency (MHz)</h2>

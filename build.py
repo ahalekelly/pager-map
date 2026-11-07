@@ -2,7 +2,7 @@
 # requires-python = ">=3.12"
 # ///
 """Build index.html and data/<state>.json: maps of active FCC ULS site-licensed transmitters in 900-932 MHz, per US state."""
-import collections, csv, json, pathlib, sys
+import collections, csv, datetime, json, pathlib, re, sys
 
 ULS = pathlib.Path(sys.argv[1])
 HERE = pathlib.Path(__file__).parent
@@ -124,6 +124,8 @@ meta = {
     "peak": max(t["w"] or 0 for p in points.values() for t in p["tx"]),
     "source": (ULS / "l_paging" / "counts").read_text().splitlines()[0],
 }
-(HERE / "index.html").write_text((HERE / "template.html").read_text().replace("/*META*/", json.dumps(meta, separators=(",", ":")).replace("</", "<\\/")))
+dump_date = datetime.datetime.strptime(" ".join(re.search(r"(\w{3}) +(\d+) [\d:]+ \w+ (\d{4})", meta["source"]).groups()), "%b %d %Y").date()
+html = (HERE / "template.html").read_text().replace("/*META*/", json.dumps(meta, separators=(",", ":")).replace("</", "<\\/"))
+(HERE / "index.html").write_text(html.replace("/*DATE*/", dump_date.isoformat()))
 print(f"{len(meta['regions'])} regions, {len(points)} sites, {sum(len(p['tx']) for p in points.values())} transmitters")
 print(collections.Counter(CATEGORIES[t["cat"]][0] for p in points.values() for t in p["tx"]).most_common())
